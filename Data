@@ -1,0 +1,73 @@
+-- =================================================================
+-- 2. ЗАПОЛНЕНИЕ ОСНОВНЫХ СПРАВОЧНИКОВ
+-- =================================================================
+INSERT INTO Materials (material_name, unit_price) VALUES
+(N'Деревянная доска (м)', 150.00),
+(N'Металлический уголок (м)', 320.50),
+(N'Шурупы (кг)', 200.00),
+(N'Стекло (кв.м)', 500.00),
+(N'Пластик (кг)', 100.00);
+
+INSERT INTO Products (product_name) VALUES
+(N'Деревянный стол'),
+(N'Металлический стеллаж'),
+(N'Стеклянная тумба');
+
+-- =================================================================
+-- 3. ЗАПОЛНЕНИЕ СВЯЗЕЙ (СПЕЦИФИКАЦИИ)
+-- Используем переменные, чтобы IDs вычислялись автоматически
+-- =================================================================
+DECLARE @mat_board INT = (SELECT material_id FROM Materials WHERE material_name = N'Деревянная доска (м)');
+DECLARE @mat_angle INT = (SELECT material_id FROM Materials WHERE material_name = N'Металлический уголок (м)');
+DECLARE @mat_screw INT = (SELECT material_id FROM Materials WHERE material_name = N'Шурупы (кг)');
+DECLARE @mat_glass INT = (SELECT material_id FROM Materials WHERE material_name = N'Стекло (кв.м)');
+DECLARE @mat_plast INT = (SELECT material_id FROM Materials WHERE material_name = N'Пластик (кг)');
+
+DECLARE @prod_table INT = (SELECT product_id FROM Products WHERE product_name = N'Деревянный стол');
+DECLARE @prod_rack INT = (SELECT product_id FROM Products WHERE product_name = N'Металлический стеллаж');
+DECLARE @prod_cab INT = (SELECT product_id FROM Products WHERE product_name = N'Стеклянная тумба');
+
+INSERT INTO Specifications (product_id, material_id, consumption_norm) VALUES
+-- Стол
+(@prod_table, @mat_board, 5.0000),
+(@prod_table, @mat_screw, 0.5000),
+-- Стеллаж
+(@prod_rack, @mat_angle, 10.0000),
+(@prod_rack, @mat_screw, 1.0000),
+-- Тумба
+(@prod_cab, @mat_glass, 2.0000),
+(@prod_cab, @mat_board, 2.0000),
+(@prod_cab, @mat_plast, 0.2000);
+
+-- =================================================================
+-- 4. ЗАПОЛНЕНИЕ ЗАКАЗОВ И СОСТАВА
+-- Берем существующих заказчиков и вычисляем ID новых заказов
+-- =================================================================
+DECLARE @cust1 INT = (SELECT TOP 1 customer_id FROM Customers);
+-- Если заказчиков несколько, берем второго для разнообразия
+DECLARE @cust2 INT = (SELECT TOP 1 customer_id FROM Customers WHERE customer_id <> @cust1); 
+IF @cust2 IS NULL SET @cust2 = @cust1; -- Если заказчик только один, используем его
+
+INSERT INTO Orders (customer_id, order_date) VALUES
+(@cust1, '2023-10-25'),
+(@cust2, '2023-10-26');
+
+-- Вычисляем ID созданных заказов
+DECLARE @order1 INT = (SELECT TOP 1 order_id FROM Orders WHERE customer_id = @cust1);
+DECLARE @order2 INT = (SELECT TOP 1 order_id FROM Orders WHERE customer_id = @cust2 AND order_id <> @order1);
+IF @order2 IS NULL SET @order2 = @order1;
+
+INSERT INTO Order_Items (order_id, product_id, quantity) VALUES
+-- Заказ 1
+(@order1, @prod_table, 5), 
+(@order1, @prod_rack, 1), 
+-- Заказ 2
+(@order2, @prod_cab, 3), 
+(@order2, @prod_table, 2); 
+
+-- =================================================================
+-- 5. ПОЛЬЗОВАТЕЛИ
+-- =================================================================
+INSERT INTO Users (login, password, role, is_blocked, failed_attempts) VALUES
+(N'admin', N'admin123', N'Admin', 0, 0),
+(N'user', N'user123', N'User', 0, 0);
