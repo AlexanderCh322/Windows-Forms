@@ -1,0 +1,193 @@
+-- ============================================
+-- 1. ЗАПОЛНЕНИЕ ТАБЛИЦЫ CUSTOMERS ИЗ JSON
+-- ============================================
+
+-- Вставка данных из JSON в таблицу Customers
+INSERT INTO Customers (customer_name, inn, address, phone, is_seller, is_buyer)
+SELECT 
+    JSON_VALUE(value, '$.name') AS customer_name,
+    NULLIF(JSON_VALUE(value, '$.inn'), '') AS inn,
+    JSON_VALUE(value, '$.addres') AS address,
+    JSON_VALUE(value, '$.phone') AS phone,
+    CAST(JSON_VALUE(value, '$.salesman') AS BIT) AS is_seller,
+    CAST(JSON_VALUE(value, '$.buyer') AS BIT) AS is_buyer
+FROM OPENJSON(N'[
+    {
+        "id": "000000001",
+        "name": "ООО \"Поставка\"",
+        "inn": "",
+        "addres": "г.Пятигорск",
+        "phone": "+79198634592",
+        "salesman": true,
+        "buyer": true
+    },
+    {
+        "id": "000000002",
+        "name": "ООО \"Кинотеатр Квант\"",
+        "inn": "26320045123",
+        "addres": "г. Железноводск, ул. Мира, 123",
+        "phone": "+79884581555",
+        "salesman": true,
+        "buyer": false
+    },
+    {
+        "id": "000000008",
+        "name": "ООО \"Новый JDTO\"",
+        "inn": "26320045111",
+        "addres": "г. Железноводсу",
+        "phone": "+79884581555",
+        "salesman": true,
+        "buyer": false
+    },
+    {
+        "id": "000000003",
+        "name": "ООО \"Ромашка\"",
+        "inn": "4140784214",
+        "addres": "г. Омск, ул. Строителей, 294",
+        "phone": "+79882584546",
+        "salesman": false,
+        "buyer": true
+    },
+    {
+        "id": "000000009",
+        "name": "ООО \"Ипподром\"",
+        "inn": "5874045632",
+        "addres": "г. Уфа, ул. Набережная,  37",
+        "phone": "+79627486389",
+        "salesman": true,
+        "buyer": true
+    },
+    {
+        "id": "000000010",
+        "name": "ООО \"Ассоль\"",
+        "inn": "2629011278",
+        "addres": "г. Калуга, ул. Пушкина, 94",
+        "phone": "+79184572398",
+        "salesman": false,
+        "buyer": true
+    }
+]');
+
+-- ============================================
+-- 2. ЗАПОЛНЕНИЕ ТАБЛИЦЫ MATERIALS
+-- ============================================
+
+INSERT INTO Materials (material_name, unit_price)
+VALUES 
+    (N'Молоко нормализованное', 34.00),
+    (N'Закваска сметанная', 45.00);
+
+-- ============================================
+-- 3. ЗАПОЛНЕНИЕ ТАБЛИЦЫ PRODUCTS
+-- ============================================
+
+INSERT INTO Products (product_name)
+VALUES 
+    (N'Кефир 2,5% 900г.'),
+    (N'Кефир 3,2% 900г.'),
+    (N'Молоко 2,5% 900г.'),
+    (N'Сметана классическая 15% 540г.');
+
+-- ============================================
+-- 4. ЗАПОЛНЕНИЕ ТАБЛИЦЫ SPECIFICATIONS
+-- ============================================
+
+-- Вариант 1: С подзапросами (рекомендуемый)
+INSERT INTO Specifications (product_id, material_id, consumption_norm)
+VALUES 
+    (
+        (SELECT product_id FROM Products WHERE product_name = N'Сметана классическая 15% 540г.'),
+        (SELECT material_id FROM Materials WHERE material_name = N'Молоко нормализованное'),
+        0.9000
+    ),
+    (
+        (SELECT product_id FROM Products WHERE product_name = N'Сметана классическая 15% 540г.'),
+        (SELECT material_id FROM Materials WHERE material_name = N'Закваска сметанная'),
+        0.0700
+    );
+
+-- ============================================
+-- 5. ЗАПОЛНЕНИЕ ТАБЛИЦЫ ORDERS
+-- ============================================
+
+-- Создание заказа для ООО "Ассоль" (customer_id определяется автоматически)
+INSERT INTO Orders (customer_id, order_date)
+VALUES 
+    (
+        (SELECT customer_id FROM Customers WHERE customer_name = N'ООО "Ассоль"'),
+        '2025-06-06'
+    );
+
+-- ============================================
+-- 6. ЗАПОЛНЕНИЕ ТАБЛИЦЫ ORDER_ITEMS
+-- ============================================
+
+-- Добавление позиций заказа
+INSERT INTO Order_Items (order_id, product_id, quantity)
+VALUES 
+    (
+        (SELECT order_id FROM Orders WHERE order_date = '2025-06-06' AND customer_id = (SELECT customer_id FROM Customers WHERE customer_name = N'ООО "Ассоль"')),
+        (SELECT product_id FROM Products WHERE product_name = N'Кефир 2,5% 900г.'),
+        12
+    ),
+    (
+        (SELECT order_id FROM Orders WHERE order_date = '2025-06-06' AND customer_id = (SELECT customer_id FROM Customers WHERE customer_name = N'ООО "Ассоль"')),
+        (SELECT product_id FROM Products WHERE product_name = N'Кефир 3,2% 900г.'),
+        9
+    ),
+    (
+        (SELECT order_id FROM Orders WHERE order_date = '2025-06-06' AND customer_id = (SELECT customer_id FROM Customers WHERE customer_name = N'ООО "Ассоль"')),
+        (SELECT product_id FROM Products WHERE product_name = N'Молоко 2,5% 900г.'),
+        10
+    );
+
+-- ============================================
+-- 7. ЗАПОЛНЕНИЕ ТАБЛИЦЫ USERS
+-- ============================================
+
+INSERT INTO Users (login, password, role, is_blocked, failed_attempts)
+VALUES 
+    (N'admin', N'admin123', N'Admin', 0, 0),
+    (N'user', N'user123', N'User', 0, 0);
+
+-- ============================================
+-- 8. ПРОВЕРОЧНЫЕ ЗАПРОСЫ
+-- ============================================
+
+-- Проверка Customers
+SELECT 'Customers' AS TableName, customer_id, customer_name, inn, address, phone, is_seller, is_buyer 
+FROM Customers;
+
+-- Проверка всех вставленных данных
+SELECT 'Materials' AS TableName, * FROM Materials;
+SELECT 'Products' AS TableName, * FROM Products;
+SELECT 'Specifications' AS TableName, * FROM Specifications;
+SELECT 'Orders' AS TableName, * FROM Orders;
+SELECT 'Order_Items' AS TableName, * FROM Order_Items;
+SELECT 'Users' AS TableName, * FROM Users;
+
+-- Детальная проверка заказа
+SELECT 
+    o.order_id,
+    c.customer_name,
+    o.order_date,
+    p.product_name,
+    oi.quantity,
+    m.unit_price,
+    (oi.quantity * m.unit_price) AS total_price
+FROM Orders o
+JOIN Customers c ON o.customer_id = c.customer_id
+JOIN Order_Items oi ON o.order_id = oi.order_id
+JOIN Products p ON oi.product_id = p.product_id
+JOIN Materials m ON m.material_id = 1; -- временно для демонстрации
+
+-- Проверка спецификаций
+SELECT 
+    p.product_name,
+    m.material_name,
+    s.consumption_norm,
+    m.unit_price,
+    (s.consumption_norm * m.unit_price) AS material_cost
+FROM Specifications s
+JOIN Products p ON s.product_id = p.product_id
+JOIN Materials m ON s.material_id = m.material_id;
